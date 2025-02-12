@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "file_list.h"
 #include "minitar.h"
@@ -36,6 +37,13 @@ int main(int argc, char **argv) {
     }
     // Appending More Files To An Existing Archive.
     else if (strcmp(argv[1], "-a") == 0) {
+        // Ensuring Archive Exists.
+        if (access(tar_archive_name, F_OK) == -1) {
+            perror("Archive does not exist");
+            file_list_clear(&files);
+            return -1;
+        }
+
         // Adding The Files To The List of Files.
         for (int i = 4; i < argc; i++) {
             if (file_list_add(&files, argv[i]) == -1) {
@@ -70,6 +78,13 @@ int main(int argc, char **argv) {
     }
     // Updating The Existing Archive.
     else if (strcmp(argv[1], "-u") == 0) {
+        // Ensuring Archive Exists.
+        if (access(tar_archive_name, F_OK) == -1) {
+            perror("Archive does not exist");
+            file_list_clear(&files);
+            return -1;
+        }
+
         // Creating A List of Files To Update.
         file_list_t files_to_update;
         file_list_init(&files_to_update);
@@ -131,12 +146,24 @@ int main(int argc, char **argv) {
     }
     // Extracting The Files From The Archive.
     else if (strcmp(argv[1], "-x") == 0) {
+        // Checking If The Archive Exists.
+        if (access(tar_archive_name, F_OK) == -1) {
+            perror("Archive does not exist");
+            file_list_clear(&files);
+            return -1;
+        }
+
+        // Extracting The Files From The Archive.
         if (extract_files_from_archive(tar_archive_name) == -1) {
             perror("Failed to extract archive");
             file_list_clear(&files);
             return -1;
         }
-    } else {
+    }
+    // Else It's An Invalid Command.
+    // And We Print The Usage.
+    else {
+        printf("Invalid Command\n");
         printf("Usage: %s -c|a|t|u|x -f ARCHIVE [FILE...]\n", argv[0]);
         file_list_clear(&files);
         return -1;

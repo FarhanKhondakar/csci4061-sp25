@@ -504,7 +504,10 @@ int extract_files_from_archive(const char *archive_name) {
             }
 
             // Write The File Contents To The Output File.
+            // Overwrite The File If It Already Exists.
             size_t bytes_written = fwrite(buffer, 1, bytes_fetched, output_file);
+
+            // If The Bytes Written Is Not Equal To The Bytes Fetched, Return An Error.
             if (bytes_written != bytes_fetched) {
                 perror("Failed to write to file");
                 close_file(tar_archive, "Failed to close tar archive");
