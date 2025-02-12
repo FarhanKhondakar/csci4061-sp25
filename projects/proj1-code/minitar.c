@@ -454,6 +454,72 @@ int get_archive_file_list(const char *archive_name, file_list_t *files) {
 }
 
 int extract_files_from_archive(const char *archive_name) {
-    // TODO: Not yet implemented
+    FILE *tar_archive = fopen(archive_name, "rb");
+    if (tar_archive == NULL) {
+        perror("Failed to open tar archive");
+        return -1;
+    }
+
+    tar_header archive_header;
+    size_t bytes_fetched;
+
+    while ((bytes_fetched = fread(&archive_header, sizeof(archive_header), 1, tar_archive)) == 1) {
+        // If The Name of The File is Empty, We Have Reached The End of The Archive.
+        if (archive_header.name[0] == '\0') {
+            break;
+        }
+
+        // We Use strtoull to convert the Octal String to an Unsigned
+        // long long integer. This represents the size of the file.
+        char *end_pointer;
+        size_t file_size = strtoull(archive_header.size, &end_pointer, OCTAL_BASE);
+        if (*end_pointer != '\0') {
+            perror("Failed to convert file size to unsigned long long");
+            close_file(tar_archive, "Failed to close tar archive");
+            return -1;
+        }
+
+        // Open The File That We Want To Write To.
+        // Either will create a new file, or overwrite the existing one.
+        FILE *extract_file = fopen(archive_header.name, "wb");
+        if (extract_file == NULL) {
+            perror("Failed to open file");
+            close_file(tar_archive, "Failed to close tar archive");
+            return -1;
+        }
+
+        char buffer[BLOCK_SIZE] = {0};
+
+        while ((bytes_fetched = fread(buffer, 1, sizeof(buffer), tar_archive)) > 0) {
+            // Write The File Contents To The Extracted File.
+            size_t bytes_written = fwrite(buffer, 1, bytes_fetched, extract_file);
+
+            // If The Bytes Written Is Not Equal To The Bytes Fetched, Return An Error.
+            if (bytes_written != bytes_fetched) {
+                perror("Failed to write to file");
+                close_file(tar_archive, "Failed to close tar archive");
+                close_file(extract_file, "Failed to close file");
+                return -1;
+            }
+        }
+
+        size_t spacing = BLOCK_SIZE - (file_size % BLOCK_SIZE);
+        if (spacing != 0) {
+            fseek(tar_archive, spacing, SEEK_CUR);
+        }
+        fseek(tar_archive, spacing, SEEK_CUR);
+
+        if (fclose(extract_file) != 0) {
+            perror("Failed to close file");
+            close_file(tar_archive, "Failed to close tar archive");
+            return -1;
+        }
+    }
+
+    if (fclose(tar_archive) != 0) {
+        perror("Failed to close tar archive");
+        return -1;
+    }
+
     return 0;
 }
